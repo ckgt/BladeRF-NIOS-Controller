@@ -243,8 +243,8 @@ int sm_fx3uart_mode_FINISHED_handler(state_machine* sm, uint8_t b){
 	sm_fx3uart_EXECUTE_COMMANDS(sm);
 
 	uart_cmd* cmds = state->cmds;
-	DLOG("%s...Echo cmds\n","");
 
+	// Echo the packets/commands back to the host
 	blade.devices.host.uart_write(state->pkt.magic);
 	blade.devices.host.uart_write(state->pkt.mode);
 
@@ -391,7 +391,6 @@ void sm_fx3uart_EXECUTE_COMMANDS(state_machine* sm){
 	}// switch
 
 	// --------------------------------------------------
-	//echo the commands back to the host
 	DLOG("%s() - [end]\n", __FUNCTION__);
 
 	return;

@@ -66,7 +66,6 @@ void packet_router_register_machine(packet_router* r, state_machine* sm, int ID,
 void packet_router_step_machine(packet_router* r, state_machine* sm, uint8_t b){
 
 	// Calling the current state handler according to mode index.
-	// No silly switch statement.
 	int sts = state_machine_handle_byte(sm, b);
 	sm->byte_num++;
 	if(sts == state_machine_status.DONE){	//machine is finished reading and expects no more data

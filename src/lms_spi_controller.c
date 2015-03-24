@@ -82,7 +82,7 @@ int main()
 			buffer[count] = blade.devices.host.uart_read();
 			++count;
 		} else {
-			// the first byte is a wizard, and wizards can't be 0.
+			// the first byte is a magic, and the magic byte shouldn't be 0.
 			// something happened...
 			if(buffer[0] == 0){
 				count = 0;

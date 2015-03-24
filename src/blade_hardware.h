@@ -39,6 +39,7 @@
 // define BLADE_NULL_HARDWARE before this file.
 //
 // This will replace all hardware functions with print statements.
+// Ok, not exactly print statements. DSHOW_CALL() macros calls.
 //
 
 
@@ -395,8 +396,6 @@ BLADE_HW_READ_PROTO( GDEV_EXPANSION ){
 	return 0;
 #else
 	return (IORD_ALTERA_AVALON_PIO_DATA(PIO_1_BASE)) >> (addr * 8);
-	// couldn't resist
-	//return (0xdeadbeef) >> (addr * 8);
 #endif
 }
 BLADE_HW_READ_PROTO( GDEV_EXPANSION_DIR ){
