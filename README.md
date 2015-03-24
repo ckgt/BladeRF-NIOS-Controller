@@ -5,7 +5,7 @@ Did the old one work fine? yes.
 
 This provides Blade hardware abstraction for the NIOS functional code.
 
-This emulates *all* functionality of the old version, now it's just more flexible and modular.
+This emulates *all* functionality of the old version, and it's more flexible and modular.
 ```
 blade_hardware.h    - The hardware function abstraction. 'blade' structure defined.
 simple_types.h      - Simple types, utilities.
