@@ -58,7 +58,7 @@ proc.write(...);
 PC_TEST_lms_spi_controller.c gives an example of how to compile the code on a PC environment.
 Why do this? Because it makes it sooo much faster to change and debug a state machine.
 
-Simply #define BLADE_NULL_HARDWARE and you can compile everything (all of it) from the NIOS project in something like MSVC or GDB.
+Simply #define BLADE_NULL_HARDWARE and you can compile everything (all of it) from the NIOS project in something like MSVC or GCC and debug accordingly.
 All the hardware mappings are replaced with print statements... so the console gets pretty crazy, but you can map whatever simulated hardware activity you want.
 
 There is also a BLADE_NIOS_DEBUG define that will enable function logging to the JTAG output when running on the NIOS.
