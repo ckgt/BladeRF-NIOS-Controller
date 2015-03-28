@@ -9,17 +9,7 @@
 #define BLADE_HARDWARE_H_
 
 
-#include "simple_types.h"
 
-// skip Altera includes if null hardware...
-#ifndef BLADE_NULL_HARDWARE
- #include "system.h"
- #include "altera_avalon_spi.h"
- #include "altera_avalon_uart_regs.h"
- #include "altera_avalon_jtag_uart_regs.h"
- #include "altera_avalon_pio_regs.h"
-#endif
- 
 
 //         _______           _      ___________ 
 //        | ___ \ |         | |    | ___ \  ___|
@@ -39,8 +29,55 @@
 // define BLADE_NULL_HARDWARE before this file.
 //
 // This will replace all hardware functions with print statements.
-// Ok, not exactly print statements. DSHOW_CALL() macros calls.
 //
+
+
+
+#include "simple_types.h"
+
+
+// Detect if we are in NIOS Build TOOLS
+#ifdef __hal__
+	// Could define BLADE_NULL_HARDWARE here, but it makes more sense to *have* to 
+	// define it in lms_spi_controller so it's more visible.
+
+	// If BLADE_NULL_HARDWARE is defined, but we are in NIOS build tools...
+	// And someone forgot to disble it... throw a compiler error.
+	#if defined(BLADE_NULL_HARDWARE)
+		#error When compiling for the NIOS, you must #undef BLADE_NULL_HARDWARE.
+	#endif
+#else
+	#if  !defined(BLADE_NULL_HARDWARE)
+		#error When compiling for a PC platform, you must #define BLADE_NULL_HARDWARE before "blade_hardware.h".
+	#endif
+#endif
+
+
+// Include Altera includes if built for NIOS hardware...
+#if !defined(BLADE_NULL_HARDWARE)
+
+	//#include "priv/alt_busy_sleep.h"
+	//#include "priv/alt_file.h"
+	#include <stdio.h>
+	#include <string.h>
+	#include <unistd.h>
+	#include <fcntl.h>
+
+	//#include "sys/alt_dev.h"
+
+	#include "system.h"
+	#include "altera_avalon_spi.h"
+	#include "altera_avalon_uart_regs.h"
+	#include "altera_avalon_jtag_uart_regs.h"
+	#include "altera_avalon_pio_regs.h"
+
+#else
+	#include <assert.h>
+#endif
+ 
+
+
+
 
 
 
@@ -94,9 +131,18 @@
 //================================================================
 //================================================================
 
+#ifdef BLADE_NULL_HARDWARE
+	// Create prototype
+	void BLADE_NULL_HARDWARE_INIT_FUNC_NAME();
+#endif
+
+
 void blade_initialize_hardware( void ){
 #ifdef BLADE_NULL_HARDWARE
 	DSHOW_CALL(__FUNCTION__);
+
+	BLADE_NULL_HARDWARE_INIT_FUNC_NAME();
+    
 	return;
 #else
 	// Set the prescaler for 400kHz with an 80MHz clock (prescaer = clock / (5*desired) - 1)
@@ -118,6 +164,7 @@ void blade_initialize_hardware( void ){
 void si5338_complete_transfer( uint8_t check_rxack ) {
 #ifdef BLADE_NULL_HARDWARE
 	DSHOW_CALL(__FUNCTION__);
+	DLOG("  -->check_rxack: %d \n", check_rxack);
 	return;
 #else
     if( (IORD_8DIRECT(I2C, OC_I2C_CMD_STATUS)&OC_I2C_TIP) == 0 ) {
@@ -134,6 +181,7 @@ void si5338_complete_transfer( uint8_t check_rxack ) {
 void si5338_read( uint8_t addr, uint8_t *data ) {
 #ifdef BLADE_NULL_HARDWARE
 	DSHOW_CALL(__FUNCTION__);
+	DLOG("  -->addr: %d \n", addr);
 	return;
 #else
     // Set the address to the Si5338
@@ -161,6 +209,7 @@ void si5338_read( uint8_t addr, uint8_t *data ) {
 void si5338_write( uint8_t addr, uint8_t data ) {
 #ifdef BLADE_NULL_HARDWARE
 	DSHOW_CALL(__FUNCTION__);
+	DLOG("  -->addr: %d;  data:%d \n", addr, data);
 	return;
 #else
     // Set the address to the Si5338
@@ -184,6 +233,7 @@ void si5338_write( uint8_t addr, uint8_t data ) {
 void dac_write( uint16_t val ) {
 #ifdef BLADE_NULL_HARDWARE
 	DSHOW_CALL(__FUNCTION__);
+	DLOG("  -->data:%d \n", val);
 	return;
 #else
 //    alt_printf( "DAC Writing: %x\n", val ) ;
@@ -200,6 +250,7 @@ void dac_write( uint16_t val ) {
 void adf4351_write( uint32_t val ) {
 #ifdef BLADE_NULL_HARDWARE
 	DSHOW_CALL(__FUNCTION__);
+	DLOG("  -->data:%d \n", val);
 	return;
 #else
     union {
@@ -227,6 +278,7 @@ void adf4351_write( uint32_t val ) {
 void lms_spi_read( uint8_t address, uint8_t *val ){
 #ifdef BLADE_NULL_HARDWARE
 	DSHOW_CALL(__FUNCTION__);
+	DLOG("  -->addr: %d \n", address);
 	return;
 #else
 	//alt_printf("lms_spi_read(%x, %x)\n", address, *val);
@@ -254,6 +306,7 @@ void lms_spi_read( uint8_t address, uint8_t *val ){
 void lms_spi_write( uint8_t address, uint8_t val ){
 #ifdef BLADE_NULL_HARDWARE
 	DSHOW_CALL(__FUNCTION__);
+	DLOG("  -->addr: %d;  data:%d \n", address, val);
 	return;
 #else
 	//alt_printf("lms_spi_write(%x, %x)\n", address, val);
@@ -466,6 +519,7 @@ BLADE_HW_WRITE_PROTO( GDEV_IQ_CORR_TX_PHASE ){
 BLADE_HW_WRITE_PROTO( GDEV_FPGA_VERSION ){
 #ifdef BLADE_NULL_HARDWARE
 	DSHOW_CALL(__FUNCTION__);
+	assert(!("  [!] GDEV_FPGA_VERSION_write() function is not implemented. What are you doing?"));
 	return;
 #else
 	// not implemented
@@ -603,40 +657,46 @@ blade_device_procedure blade_find_gpio_procedure(uint8_t addr){
 // blade.devices.lms.spi_read( addr, &out );
 // 
 
+
+// If running on PC, allow function reassignment, otherwise no.
+// Not sure if this is the best form though. Using this macro name...
+// BLADE_CONST_FUNC is in simple_types.h
+
+
 typedef struct {
-	void (* const spi_read)( uint8_t address, uint8_t *val );
-	void (* const spi_write)( uint8_t address, uint8_t val );
+	void(* spi_read)(uint8_t address, uint8_t *val);
+	void(* spi_write)(uint8_t address, uint8_t val);
 } lms_functions;
 
 typedef struct {
-	void (* const read)( uint8_t addr, uint8_t *data );
-	void (* const write)( uint8_t addr, uint8_t data );
+	void(* read)(uint8_t addr, uint8_t *data);
+	void(* write)(uint8_t addr, uint8_t data);
 } si5338_functions;
 
 typedef struct {
-	void (* const write)( uint16_t val );
+	void(* write)(uint16_t val);
 } dac_functions;
 
 typedef struct {
-	void (* const write)( uint32_t val );
+	void(* write)(uint32_t val);
 } adf4351_functions;
 typedef struct {
-	uint8_t (* const uart_read)( void );
-	void    (* const uart_write)( uint8_t val);
-	int     (* const uart_hasdata)( void );
+	uint8_t	(* uart_read)(void);
+	void	(* uart_write)(uint8_t val);
+	int		(* uart_hasdata)(void);
 } host_uart_functions;
 typedef struct {
-	const lms_functions 		lms;
-	const si5338_functions 		si5338;
-	const dac_functions 		dac;
-	const adf4351_functions 	adf4351;
-	const host_uart_functions 	host;
+	lms_functions 		lms;
+	si5338_functions 	si5338;
+	dac_functions 		dac;
+	adf4351_functions 	adf4351;
+	host_uart_functions host;
 } blade_device_list;
 
-const struct {
-	void (* const initialize)( void );
-	const blade_device_list 		devices;
-	const int 						gpio_count;
+BLADE_CONST_FUNC struct {
+	void (* initialize)( void );
+	blade_device_list 			devices;
+	const int 					gpio_count;
 	const blade_device_procedure* 	gpio;
 } blade = {
 	blade_initialize_hardware,
@@ -664,6 +724,12 @@ const struct {
 	sizeof(blade_function_table)/sizeof(blade_device_procedure),
 	blade_function_table
 };
+
+
+// Now that the device is created, let the user change it when debugging...
+#ifdef BLADE_NULL_HARDWARE
+	#include "blade_null_hardware_impl.h"
+#endif
 
 
 #endif /* BLADE_HARDWARE_H_ */

@@ -1,34 +1,35 @@
 /*
- * Copyright (c) 2013 Nuand LLC
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 
-//#include "priv/alt_busy_sleep.h"
-//#include "priv/alt_file.h"
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
+	Created on: March 23, 2015
+		Author: Cameron Karlsson
 
-//#include "sys/alt_dev.h"
 
+	lms_spi_controller
+
+	>> Running on the NIOS?
+	Just compile.
+
+	>> Running on a PC?
+	Make sure to #define BLADE_NULL_HARDWARE before "blade_hardware.h".
+	Done.
+
+	Run this in your favorite debugger.
+	MSVC,GDB,Xcode... whatever.
+	With the NULL hardware specified, you can debug the 
+	state machine on a PC with relative ease. No JTAG needed.
+	Note: If you need some hardware functionality while running on the PC,
+	you can define it in "blade_null_hardware_impl.h"
+
+
+*/
+
+
+
+// So we can run test on a PC, not NIOS
+//#define BLADE_NULL_HARDWARE
+
+// Will send debug alt_printf info to JTAG console while running on NIOS.
+// This can slow performance and cause timing issues... be careful.
 //#define BLADE_NIOS_DEBUG
 
 // blade device access functions / wrappers
@@ -42,21 +43,13 @@
 
 
 
-
 // Entry point
 int main()
 {
-	// initialize hardware settings
+	// initialize hardware settings, should always be first
 	blade.initialize();
 
-	// clear uart buffer
-	while( blade.devices.host.uart_hasdata() )
-	{
-		blade.devices.host.uart_read();
-	}
-
-
-	// -- create and configure byte router & processing state machine --
+	// -- create and configure byte router, processing state machine --
 	
 	// The byte router will send the byte to whatever state machine is active based on
 	// its 'magic' byte. So yes, many state machines can be available with different magics.
@@ -68,41 +61,57 @@ int main()
 	state_machine 		smfx3uart 			= sm_fx3uart_new(&smfx3uart_container);
 
 	// assign sm_fx3uart state machine object to slot 0 of the router with the old magic value. 'N'
+	// When assigning, make sure MAX_STATE_MACHINES (packet_router.h) is > your slot number.
 	packet_router_register_machine(&router, &smfx3uart, 0, UART_PKT_MAGIC);
 
 
-	uint8_t buffer[16] = {0};
+
+	uint8_t buffer[16] = { 0 };
 	volatile uint32_t count = 0;
 
-	while(true)
+	while (true)
 	{
 		// Check if anything is in the UART from host (fx3)
-		if( blade.devices.host.uart_hasdata() )
+		if (blade.devices.host.uart_hasdata())
 		{
 			buffer[count] = blade.devices.host.uart_read();
 			++count;
-		} else {
+		}
+		else {
 			// the first byte is a magic, and the magic byte shouldn't be 0.
 			// something happened...
-			if(buffer[0] == 0){
+			if (buffer[0] == 0){
 				count = 0;
 			}
 		}
-		if( count == 16 ){
-			for(count = 0; count < 16; ++count){
+		if (count == 16){
+			for (count = 0; count < 16; ++count){
 				packet_router_handle_byte(&router, buffer[count]);
 				buffer[count] = 0;
 			}
 			count = 0;
 		}
 
+
+		// Don't want to run forever on PC!
+		// You can modify this to fit your testing case.
+		#ifdef BLADE_NULL_HARDWARE
+		if ( ! blade.devices.host.uart_hasdata() ){
+			break;
+		}
+		#endif
+
+
 	}// while
 
-	return 0;
 
+	// pause...
+	#ifdef BLADE_NULL_HARDWARE
+	getchar();
+	#endif
 
+  return 0;
 }
-
 
 
 

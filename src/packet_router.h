@@ -28,7 +28,7 @@
 #include "simple_types.h"
 #include "state_machine.h"
 
-#define MAX_STATE_MACHINES 2
+#define MAX_STATE_MACHINES 1
 // Make sure to change MAX_STATE_MACHINES when you plan on adding others.
 
 typedef struct {
@@ -66,6 +66,7 @@ void packet_router_register_machine(packet_router* r, state_machine* sm, int ID,
 void packet_router_step_machine(packet_router* r, state_machine* sm, uint8_t b){
 
 	// Calling the current state handler according to mode index.
+	// No silly switch statement.
 	int sts = state_machine_handle_byte(sm, b);
 	sm->byte_num++;
 	if(sts == state_machine_status.DONE){	//machine is finished reading and expects no more data

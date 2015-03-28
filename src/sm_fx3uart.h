@@ -8,8 +8,8 @@
 #ifndef SMFX3UART_H_
 #define SMFX3UART_H_
 
-#include "state_machine.h"
 #include "blade_hardware.h"
+#include "state_machine.h"
 
 
 #define UART_PKT_MAGIC          'N'
@@ -80,6 +80,10 @@ typedef struct {
 	uart_pkt pkt;
 	uart_cmd cmds[7];
 	uint8_t bytes[16];
+	union {
+		uint32_t data;
+		uint8_t bytes[4];
+	} collected_write_bytes;
 
 	int (*mode_handlers[SM_FX3UART_NUM_MODES])(state_machine* sm, uint8_t b);		// <--- !! Make sure there are enough spaces for the handlers!
 } sm_fx3uart_state;
@@ -143,6 +147,7 @@ int sm_fx3uart_mode_READY_handler(state_machine* sm, uint8_t b){
 	state->dev_id = 0;
 	state->isread = 0;
 	state->iswrite = 0;
+	//state->collected_write_bytes.data = 0;	// do NOT reset collected_write_bytes!
 
 	uart_cmd zerocmd = {0};
 	int i = 0;
@@ -243,8 +248,8 @@ int sm_fx3uart_mode_FINISHED_handler(state_machine* sm, uint8_t b){
 	sm_fx3uart_EXECUTE_COMMANDS(sm);
 
 	uart_cmd* cmds = state->cmds;
+	DLOG("%s...Echo cmds\n","");
 
-	// Echo the packets/commands back to the host
 	blade.devices.host.uart_write(state->pkt.magic);
 	blade.devices.host.uart_write(state->pkt.mode);
 
@@ -281,7 +286,6 @@ void sm_fx3uart_EXECUTE_COMMANDS(state_machine* sm){
 		return;
 	}
 
-	static uint32_t collect_bytes = 0;		// used in GPIO write
 	uart_cmd* cmds = state->cmds;
 
 	int i = 0;
@@ -359,15 +363,17 @@ void sm_fx3uart_EXECUTE_COMMANDS(state_machine* sm){
 				uint8_t offset = cmds[i].addr - proc.address;
 				bool last_byte = offset == proc.parameter_bytecount-1;
 
-				if(proc.requires_collected_write_bytes){
-					// copy the byte in this command to the corresponding offset in collect_bytes
-					collect_bytes &= ~ ( 0xff << ( 8 * offset));
-					collect_bytes |= cmds[i].data << (8 * offset);
+				if (proc.requires_collected_write_bytes){
+					// libbladerf sends ints (4 bytes) over 4 sequential commands...
+					// This collects each byte and puts it in the collected variable.
 
-					// after all bytes needed for the procedure have been collected,
+					// Copy the byte in this command to the corresponding offset in collected_write_bytes
+					state->collected_write_bytes.bytes[offset] = cmds[i].data;
+
+					// After all bytes needed for the procedure have been collected, call the function...
 					if (last_byte) {
-						proc.write(0, collect_bytes);
-						collect_bytes = 0;
+						proc.write(0, state->collected_write_bytes.data);
+						state->collected_write_bytes.data = 0;
 					}
 				} else {
 					proc.write(offset, cmds[i].data);
@@ -391,6 +397,7 @@ void sm_fx3uart_EXECUTE_COMMANDS(state_machine* sm){
 	}// switch
 
 	// --------------------------------------------------
+	//echo the commands back to the host
 	DLOG("%s() - [end]\n", __FUNCTION__);
 
 	return;
