@@ -12,6 +12,7 @@ simple_types.h      - Simple types, utilities.
 packet_router.h     - Takes a byte stream, routes it to the state machine that takes that magic byte value.
 state_machine.h     - A template for a state machine.
 sm_fx3uart.h        - The state machine that emulates the old version. Similar performance, but not thoroughly tested.
+blade_null_hardware_impl.h - The null hardware device functions for PC debugging.
 ```
 
 FPGA version changed (erm, if there are bugs).  0.1.2 --> 0.1.3
@@ -55,7 +56,7 @@ proc.write(...);
 
 # Better Debugging!  -  (even on a PC)
 
-PC_TEST_lms_spi_controller.c gives an example of how to compile the code on a PC environment.
+lms_spi_controller.c compiles directly on both the NIOS and a PC (MSVC 2012 confirmed) environment.
 Why do this? Because it makes it sooo much faster to change and debug a state machine.
 
 Simply #define BLADE_NULL_HARDWARE and you can compile everything (all of it) from the NIOS project in something like MSVC or GCC and debug accordingly.
@@ -66,6 +67,6 @@ Almost all hardware functions will be logged. This is done in blade_hardware.h w
 
 # More Machines!
 
-The previous lms_spi_controller was organized around a state machine architecture. The machine would activate with a single special 'magic' byte at the beginning of the host transaction. For various reasons, I wanted different magics and multiple state machines. There is a new structure called the packet_router that will allow many state machines to monitor the incoming byte stream (just 2 slots by default, change MAX_STATE_MACHINES for more) and act accordingly. 
+The previous lms_spi_controller was organized around a state machine architecture. The machine would activate with a single special 'magic' byte at the beginning of the host transaction. For various reasons, I wanted different magics and multiple state machines. There is a new structure called the packet_router that will allow many state machines to monitor the incoming byte stream (just 1 slot by default, change MAX_STATE_MACHINES for more) and act accordingly. 
 
 The current state machine implementation of the old version does not use switch states like before. Now it uses a function lookup table, using the current state as the lookup index.
